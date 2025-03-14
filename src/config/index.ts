@@ -1,9 +1,9 @@
 const CONFIG = {
-  nomeProfissional: 'Seu Nome',
+  nomeProfissional: 'Samuel Guilherme Ribeiro Rodrigues',
   mes: 'Março',
   ano: '2024',
-  cliente: 'Nome do Cliente',
-  projeto: 'Nome do Projeto',
+  cliente: 'Lucas Câmara',
+  projeto: 'Cadastro MEI',
   valorPadraoHora: 60,
 };
 
