@@ -1,0 +1,13 @@
+{
+  "name": "planilha-horas",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node src/index.ts"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "typescript": "^5.8.2",
+    "xlsx": "^0.18.5"
+  }
+}
