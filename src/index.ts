@@ -1,33 +1,92 @@
-const xlsx = require('xlsx')
+import * as xlsx from 'xlsx';
+import CONFIG from './config';
+import tasks from './tasks';
 
-// Dados de exemplo para as tarefas
-const tarefas = [
-  { tarefa: "Tarefa 1", horasUsadas: 3, valorPorHora: 60 },
-  { tarefa: "Tarefa 2", horasUsadas: 5, valorPorHora: 60 },
-  { tarefa: "Tarefa 3", horasUsadas: 2, valorPorHora: 60 },
-  { tarefa: "Tarefa 4", horasUsadas: 6, valorPorHora: 60 },
-  { tarefa: "Tarefa 5", horasUsadas: 4, valorPorHora: 60 }
-];
-
-// Calculando o valor total para cada tarefa
-const dadosComTotais = tarefas.map(tarefa => ({
-  ...tarefa,
-  total: tarefa.horasUsadas * tarefa.valorPorHora
+const dadosComTotais = tasks.map((task) => ({
+  ...task,
+  total: task.horasUsadas * task.valorPorHora,
 }));
 
-// Somando as horas e o valor total
-const totalHoras = dadosComTotais.reduce((acc, tarefa) => acc + tarefa.horasUsadas, 0);
-const totalValor = dadosComTotais.reduce((acc, tarefa) => acc + tarefa.total, 0);
+const totalHoras = dadosComTotais.reduce(
+  (acc, task) => acc + task.horasUsadas,
+  0
+);
+const totalValor = dadosComTotais.reduce(
+  (acc, task) => acc + (task.total || 0),
+  0
+);
 
-// Adicionando a linha de total
-dadosComTotais.push({ tarefa: "Total", horasUsadas: totalHoras, valorPorHora: 0, total: totalValor });
+function criarPlanilhaModerna() {
+  const wb = xlsx.utils.book_new();
 
-// Criando uma planilha
-const ws = xlsx.utils.json_to_sheet(dadosComTotais);
+  const cabecalho = [
+    ['RELATÓRIO DE HORAS TRABALHADAS'],
+    [''],
+    ['Profissional:', CONFIG.nomeProfissional],
+    ['Cliente:', CONFIG.cliente],
+    ['Projeto:', CONFIG.projeto],
+    ['Período:', `${CONFIG.mes}/${CONFIG.ano}`],
+    [''],
+    ['DETALHAMENTO DE ATIVIDADES'],
+  ];
 
-// Criando um novo arquivo Excel
-const wb = xlsx.utils.book_new();
-xlsx.utils.book_append_sheet(wb, ws, "Tarefas");
+  const wsDetalhamento = xlsx.utils.aoa_to_sheet(cabecalho);
 
-// Salvando o arquivo
-xlsx.writeFile(wb, 'planilha_de_tarefas.xlsx');
+  const dadosTabela = [
+    ['Data', 'Tarefa', 'Descrição', 'Horas', 'Valor/Hora', 'Total'],
+    ...dadosComTotais.map((t) => [
+      t.data,
+      t.tarefa,
+      t.descricao,
+      t.horasUsadas,
+      `R$ ${t.valorPorHora.toFixed(2)}`,
+      `R$ ${t.total?.toFixed(2)}`,
+    ]),
+    ['', '', '', totalHoras, '', `R$ ${totalValor.toFixed(2)}`],
+  ];
+
+  xlsx.utils.sheet_add_aoa(wsDetalhamento, dadosTabela, { origin: 'A9' });
+
+  // Configurar larguras das colunas
+  const colunas = [
+    { wch: 12 }, // Data
+    { wch: 25 }, // Tarefa
+    { wch: 40 }, // Descrição
+    { wch: 10 }, // Horas
+    { wch: 12 }, // Valor/Hora
+    { wch: 15 }, // Total
+  ];
+  wsDetalhamento['!cols'] = colunas;
+
+  xlsx.utils.book_append_sheet(wb, wsDetalhamento, 'Relatório de Horas');
+
+  const wsResumo = xlsx.utils.aoa_to_sheet([
+    ['RESUMO DE HORAS'],
+    [''],
+    ['Total de Horas Trabalhadas:', totalHoras],
+    ['Valor Total:', `R$ ${totalValor.toFixed(2)}`],
+    ['Valor Médio por Hora:', `R$ ${(totalValor / totalHoras).toFixed(2)}`],
+    [''],
+    ['Distribuição de Horas por Tarefa:'],
+    ...dadosComTotais.map((t) => [
+      t.tarefa,
+      t.horasUsadas,
+      `${((t.horasUsadas / totalHoras) * 100).toFixed(1)}%`,
+    ]),
+  ]);
+
+  wsResumo['!cols'] = [
+    { wch: 30 }, // Descrição
+    { wch: 15 }, // Valor
+    { wch: 15 }, // Percentual
+  ];
+
+  xlsx.utils.book_append_sheet(wb, wsResumo, 'Resumo');
+
+  return wb;
+}
+
+const workbook = criarPlanilhaModerna();
+xlsx.writeFile(workbook, 'relatorio_horas_trabalhadas.xlsx');
+
+console.log('✅ Planilha gerada com sucesso: relatorio_horas_trabalhadas.xlsx');
