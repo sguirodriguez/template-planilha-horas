@@ -68,6 +68,17 @@ const dadosComTotais = tasks.map((task) => ({
   total: task.horasUsadas * task.valorPorHora,
 }));
 
+// Função para ordenar tarefas por data
+function ordenarPorData(a: any, b: any) {
+  // Converter string de data (formato YYYY-MM-DD) para objeto Date
+  const dataA = new Date(a.data.split('-').join('/'));
+  const dataB = new Date(b.data.split('-').join('/'));
+  return dataA.getTime() - dataB.getTime();
+}
+
+// Ordenar dados por data
+const dadosOrdenadosPorData = [...dadosComTotais].sort(ordenarPorData);
+
 const totalHoras = dadosComTotais.reduce(
   (acc, task) => acc + task.horasUsadas,
   0
@@ -78,7 +89,7 @@ const totalValor = dadosComTotais.reduce(
 );
 
 // Agrupar tarefas por tipo para o gráfico
-const tarefasPorTipo = dadosComTotais.reduce((acc, task) => {
+const tarefasPorTipo = dadosOrdenadosPorData.reduce((acc, task) => {
   const tipo = task.tarefa.split(' ')[0]; // Pega a primeira palavra como tipo
   if (!acc[tipo]) {
     acc[tipo] = { horas: 0, valor: 0 };
@@ -98,10 +109,12 @@ function criarPlanilhaModerna() {
     [`${ICONS.person} Profissional:`, CONFIG.nomeProfissional],
     [`${ICONS.client} Cliente:`, CONFIG.cliente],
     [`${ICONS.project} Projeto:`, CONFIG.projeto],
-    [`${ICONS.calendar} Período:`, `${CONFIG.mes}/${CONFIG.ano}`],
+    CONFIG.ocultarDatas
+      ? ['']
+      : [`${ICONS.calendar} Período:`, `${CONFIG.mes}/${CONFIG.ano}`],
     [''],
     [`${ICONS.task} DETALHAMENTO DE ATIVIDADES`],
-  ];
+  ].filter((row) => row.length > 0); // Remove empty rows
 
   const wsDetalhamento = xlsx.utils.aoa_to_sheet(cabecalho);
 
@@ -114,8 +127,8 @@ function criarPlanilhaModerna() {
   // Dados da tabela de tarefas
   const dadosTabela = [
     ['Data', 'Tarefa', 'Descrição', 'Horas', 'Valor/Hora', 'Total'],
-    ...dadosComTotais.map((t) => [
-      t.data,
+    ...dadosOrdenadosPorData.map((t) => [
+      CONFIG.ocultarDatas ? '-' : t.data,
       t.tarefa,
       t.descricao,
       t.horasUsadas,
@@ -175,7 +188,7 @@ function criarPlanilhaModerna() {
     [''],
     [`${ICONS.task} DISTRIBUIÇÃO DE HORAS POR TAREFA:`],
     ['Tarefa', 'Horas', 'Percentual', 'Valor'],
-    ...dadosComTotais.map((t) => [
+    ...dadosOrdenadosPorData.map((t) => [
       t.tarefa,
       t.horasUsadas,
       `${((t.horasUsadas / totalHoras) * 100).toFixed(1)}%`,
@@ -192,11 +205,11 @@ function criarPlanilhaModerna() {
     ]),
     [''],
     [`${ICONS.calendar} REGISTRO DIÁRIO:`],
-    ['Data', 'Horas', 'Valor'],
+    [CONFIG.ocultarDatas ? 'Item' : 'Data', 'Horas', 'Valor'],
   ]);
 
   // Agrupar por data para o registro diário
-  const horasPorDia = dadosComTotais.reduce((acc, task) => {
+  const horasPorDia = dadosOrdenadosPorData.reduce((acc, task) => {
     if (!acc[task.data]) {
       acc[task.data] = { horas: 0, valor: 0 };
     }
@@ -206,21 +219,11 @@ function criarPlanilhaModerna() {
   }, {} as Record<string, { horas: number; valor: number }>);
 
   // Adicionar dados do registro diário
-  const registroDiario = Object.entries(horasPorDia)
-    .sort((a, b) => {
-      // Ordenar por data (formato DD/MM/YYYY)
-      const [diaA, mesA, anoA] = a[0].split('/').map(Number);
-      const [diaB, mesB, anoB] = b[0].split('/').map(Number);
-
-      if (anoA !== anoB) return anoA - anoB;
-      if (mesA !== mesB) return mesA - mesB;
-      return diaA - diaB;
-    })
-    .map(([data, dados]) => [
-      data,
-      dados.horas,
-      `R$ ${dados.valor.toFixed(2)}`,
-    ]);
+  const registroDiario = Object.entries(horasPorDia).map(([data, dados]) => [
+    CONFIG.ocultarDatas ? '-' : data,
+    dados.horas,
+    `R$ ${dados.valor.toFixed(2)}`,
+  ]);
 
   // Adicionar registro diário à planilha
   xlsx.utils.sheet_add_aoa(wsResumo, registroDiario, {

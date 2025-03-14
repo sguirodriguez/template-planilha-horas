@@ -5,6 +5,7 @@ const CONFIG = {
   cliente: 'Lucas Câmara',
   projeto: 'Cadastro MEI',
   valorPadraoHora: 60,
+  ocultarDatas: true, // Se true, oculta as datas na planilha gerada (útil para relatórios anônimos)
 };
 
 export default CONFIG;
